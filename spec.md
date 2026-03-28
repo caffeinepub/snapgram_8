@@ -1,30 +1,26 @@
-# Snapgram - Photo Camera with Filters
+# Snapgram Custom Time Limit Control
 
 ## Current State
-Snapgram is a full social media app with Reels, Stories, Chat, Profile, and Create Reel tabs. The Create tab is for creating reels (video). No camera/photo feature exists.
+App has ScreenTimeModal and ScreenTimeWarning components but real-time tracking is missing. localUsedSeconds is hardcoded to 0 in App.tsx. No countdown timer, no active-use detection. Backend has recordWatchTime/setScreenTimeLimit/getScreenTimeInfo APIs.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New `CameraFilter` component: a full photo-capture experience with live camera preview and real-time CSS/canvas filters
-- Filter options: Normal, Vivid, Noir, Warm, Cool, Fade, Dramatic, Vintage (applied via CSS filter on the video preview and canvas snapshot)
-- Camera controls: Capture photo button, switch front/back camera, close/cancel
-- After capture: preview the captured photo with the chosen filter applied, option to retake or save/share to profile
-- A camera/photo icon button in the header (or as a new bottom nav tab "Camera") to open the camera modal
+- useTimeLimitTracker hook (localStorage-based): keys snapgram_time_limit_seconds, snapgram_used_seconds_today, snapgram_last_reset_date. Ticks only when document.visibilityState === visible + window focused. Auto-resets daily. Returns remainingSeconds, usedSeconds, limitSeconds, setLimit, isLimitReached.
+- Compact remaining time display in header (e.g. "45m left") next to settings icon
+- Full-screen block overlay when isLimitReached with message: "Your selected time limit has been reached. Please come back later."
 
 ### Modify
-- `App.tsx`: Add a "Camera" entry in the nav or a camera icon button in the header that opens the CameraFilter modal/sheet
+- App.tsx: use the hook, pass values to ScreenTimeModal, show remaining time in header, show ScreenTimeWarning when isLimitReached
+- ScreenTimeModal.tsx: accept usedSeconds/limitSeconds/onSetLimit props from hook; save via setLimit callback instead of backend mutation
+- ScreenTimeWarning.tsx: update message text to "Your selected time limit has been reached. Please come back later."
 
 ### Remove
-- Nothing removed
+- Nothing
 
 ## Implementation Plan
-1. Create `src/frontend/src/components/CameraFilter.tsx` with:
-   - useRef for video element and canvas
-   - getUserMedia to start live preview
-   - 8 filter presets defined as CSS filter strings
-   - Horizontal scrollable filter selector strip with preview thumbnails
-   - Capture button that draws video frame to canvas with filter applied
-   - Post-capture screen: show result, Retake / Save buttons
-   - Save downloads the image or stores in localStorage for profile
-2. Update `App.tsx` to add a Camera icon button in the header that sets a `showCamera` state, rendering CameraFilter as an overlay/modal
+1. Create src/frontend/src/hooks/useTimeLimitTracker.ts
+2. Update App.tsx to wire hook and show remaining time
+3. Update ScreenTimeModal.tsx props interface
+4. Update ScreenTimeWarning.tsx message
+5. Validate and fix any build errors

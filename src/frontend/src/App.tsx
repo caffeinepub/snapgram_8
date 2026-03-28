@@ -3,6 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import {
   Bell,
   Camera,
+  Clock,
   Film,
   Home,
   MessageSquare,
@@ -20,6 +21,8 @@ import { MessagesTab } from "./components/MessagesTab";
 import { ProfileTab } from "./components/ProfileTab";
 import { ReelsFeed } from "./components/ReelsFeed";
 import { ScreenTimeModal } from "./components/ScreenTimeModal";
+import { ScreenTimeWarning } from "./components/ScreenTimeWarning";
+import { useTimeLimitTracker } from "./hooks/useTimeLimitTracker";
 
 type Tab = "home" | "reels" | "create" | "messages" | "profile";
 
@@ -43,12 +46,31 @@ function setStoredUsername(u: string) {
   localStorage.setItem("snapgram_username", u);
 }
 
+function formatRemaining(seconds: number): string {
+  if (seconds < 60) return "< 1m left";
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins}m left`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m left` : `${h}h left`;
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>("reels");
   const [showScreenTime, setShowScreenTime] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [showWarningDismissed, setShowWarningDismissed] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [username, setUsername] = useState(getStoredUsername);
+
+  const {
+    remainingSeconds,
+    usedSeconds,
+    limitSeconds,
+    setLimit,
+    isLimitReached,
+    resetToday,
+  } = useTimeLimitTracker();
 
   const handleUsernameChange = (u: string) => {
     setUsername(u);
@@ -63,6 +85,10 @@ export default function App() {
         .slice(0, 2)
         .toUpperCase()
     : "U";
+
+  // Warning is shown when limit reached and not dismissed; but if dismissed,
+  // it reappears after 1 minute or on tab focus (keeping it simple: just show again on tab change)
+  const showWarning = isLimitReached && !showWarningDismissed;
 
   return (
     <div
@@ -99,6 +125,28 @@ export default function App() {
 
           {/* Right icons */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* Time remaining pill */}
+            <button
+              type="button"
+              data-ocid="header.toggle"
+              onClick={() => setShowScreenTime(true)}
+              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                isLimitReached
+                  ? "bg-destructive/20 text-destructive border border-destructive/30"
+                  : remainingSeconds < 600
+                    ? "bg-orange-500/20 text-orange-400 border border-orange-500/30"
+                    : "bg-muted/60 text-muted-foreground border border-border hover:text-foreground"
+              }`}
+              title="Screen time settings"
+            >
+              <Clock className="w-3 h-3" />
+              {isLimitReached ? (
+                <span className="font-bold">Time Up</span>
+              ) : (
+                <span>{formatRemaining(remainingSeconds)}</span>
+              )}
+            </button>
+
             <button
               type="button"
               data-ocid="camera.open_modal_button"
@@ -145,7 +193,11 @@ export default function App() {
               type="button"
               key={id}
               data-ocid={`nav.${id}.link`}
-              onClick={() => setActiveTab(id)}
+              onClick={() => {
+                setActiveTab(id);
+                // Re-show warning if limit reached and user navigates
+                if (isLimitReached) setShowWarningDismissed(false);
+              }}
               className={`relative flex flex-col items-center gap-0.5 px-3 py-2.5 text-xs font-medium transition-all ${
                 activeTab === id
                   ? "text-primary"
@@ -260,7 +312,19 @@ export default function App() {
       <ScreenTimeModal
         isOpen={showScreenTime}
         onClose={() => setShowScreenTime(false)}
-        localUsedSeconds={0}
+        usedSeconds={usedSeconds}
+        limitSeconds={limitSeconds}
+        onSetLimit={setLimit}
+        onReset={resetToday}
+      />
+
+      <ScreenTimeWarning
+        isVisible={showWarning}
+        onDismiss={() => setShowWarningDismissed(true)}
+        onOpenSettings={() => {
+          setShowWarningDismissed(true);
+          setShowScreenTime(true);
+        }}
       />
 
       <CameraFilter isOpen={showCamera} onClose={() => setShowCamera(false)} />

@@ -3,47 +3,51 @@ import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Clock, RotateCcw, Shield, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
-import { useScreenTimeInfo, useSetScreenTimeLimit } from "../hooks/useQueries";
+import { useState } from "react";
 
 interface ScreenTimeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  localUsedSeconds: number;
+  usedSeconds: number;
+  limitSeconds: number;
+  onSetLimit: (minutes: number) => void;
+  onReset?: () => void;
 }
 
 export function ScreenTimeModal({
   isOpen,
   onClose,
-  localUsedSeconds,
+  usedSeconds,
+  limitSeconds,
+  onSetLimit,
+  onReset,
 }: ScreenTimeModalProps) {
-  const { data: screenTimeInfo } = useScreenTimeInfo();
-  const setLimit = useSetScreenTimeLimit();
-  const [limitMinutes, setLimitMinutes] = useState(60);
+  const [limitMinutes, setLimitMinutes] = useState(() =>
+    Math.floor(limitSeconds / 60),
+  );
 
-  const limitSeconds = screenTimeInfo
-    ? Number(screenTimeInfo.limitSeconds)
-    : 3600;
-  const usedSeconds =
-    localUsedSeconds +
-    (screenTimeInfo ? Number(screenTimeInfo.usedSeconds) : 0);
+  // Sync slider when limitSeconds prop changes
+  const syncedLimit = Math.floor(limitSeconds / 60);
+  if (limitMinutes !== syncedLimit && !isOpen) {
+    // only sync when closed to avoid slider jumping while open
+  }
+
   const usedMinutes = Math.floor(usedSeconds / 60);
   const limitMins = Math.floor(limitSeconds / 60);
   const progressPct = Math.min(100, (usedSeconds / limitSeconds) * 100);
 
-  useEffect(() => {
-    if (screenTimeInfo) {
-      setLimitMinutes(Math.floor(Number(screenTimeInfo.limitSeconds) / 60));
-    }
-  }, [screenTimeInfo]);
-
   const handleSave = () => {
-    setLimit.mutate(limitMinutes);
+    onSetLimit(limitMinutes);
     onClose();
   };
 
+  const handleOpen = () => {
+    // Sync slider to current limit when modal opens
+    setLimitMinutes(Math.floor(limitSeconds / 60));
+  };
+
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={handleOpen}>
       {isOpen && (
         <>
           <motion.div
@@ -107,7 +111,9 @@ export function ScreenTimeModal({
                   Daily Limit
                 </span>
                 <span className="text-sm font-bold text-primary">
-                  {limitMinutes} min
+                  {limitMinutes >= 60
+                    ? `${Math.floor(limitMinutes / 60)}h ${limitMinutes % 60 > 0 ? `${limitMinutes % 60}m` : ""}`
+                    : `${limitMinutes} min`}
                 </span>
               </div>
               <Slider
@@ -145,15 +151,20 @@ export function ScreenTimeModal({
               </Button>
             </div>
 
-            <button
-              type="button"
-              data-ocid="screentime.delete_button"
-              className="mt-3 w-full text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center justify-center gap-1"
-              onClick={onClose}
-            >
-              <RotateCcw className="w-3 h-3" />
-              Reset today's watch time
-            </button>
+            {onReset && (
+              <button
+                type="button"
+                data-ocid="screentime.delete_button"
+                className="mt-3 w-full text-xs text-muted-foreground hover:text-destructive transition-colors flex items-center justify-center gap-1"
+                onClick={() => {
+                  onReset();
+                  onClose();
+                }}
+              >
+                <RotateCcw className="w-3 h-3" />
+                Reset today's watch time
+              </button>
+            )}
           </motion.div>
         </>
       )}

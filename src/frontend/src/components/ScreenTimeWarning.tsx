@@ -18,7 +18,7 @@ export function ScreenTimeWarning({
       {isVisible && (
         <motion.div
           data-ocid="screentime.modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 backdrop-blur-md"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -30,15 +30,14 @@ export function ScreenTimeWarning({
             exit={{ scale: 0.8, y: 20 }}
             transition={{ type: "spring", damping: 20, stiffness: 260 }}
           >
-            <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-5">
-              <Clock className="w-8 h-8 text-primary" />
+            <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-5">
+              <Clock className="w-8 h-8 text-destructive" />
             </div>
             <h2 className="text-xl font-bold text-foreground mb-2">
               Time's Up! ⏱️
             </h2>
             <p className="text-muted-foreground text-sm mb-6 leading-relaxed">
-              You've reached your daily screen time limit. Take a break and come
-              back later!
+              Your selected time limit has been reached. Please come back later.
             </p>
             <div className="space-y-3">
               <Button
